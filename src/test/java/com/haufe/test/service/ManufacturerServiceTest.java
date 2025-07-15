@@ -60,7 +60,7 @@ class ManufacturerServiceTest {
         var result = manufacturerService.getManufacturerById(1);
 
         assertThat(result.getId()).isEqualTo(manufacturer1.getId());
-        assertThat(result.getName()).isEqualTo("Test Manufacturer");
+        assertThat(result.getName()).isEqualTo("Test Manufacturer 1");
         assertThat(result.getCountry()).isEqualTo("Spain");
         verify(manufacturerRepository, times(1)).findById(1);
     }

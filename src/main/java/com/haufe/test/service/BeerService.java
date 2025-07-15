@@ -1,5 +1,6 @@
 package com.haufe.test.service;
 
+import com.haufe.test.controller.BeerSearchRequest;
 import com.haufe.test.domain.Beer;
 import com.haufe.test.domain.BeerSortField;
 import com.haufe.test.domain.mapper.BeerMapper;
@@ -7,9 +8,14 @@ import com.haufe.test.dto.BeerDto;
 import com.haufe.test.exception.NotFoundException;
 import com.haufe.test.exception.ServerException;
 import com.haufe.test.repository.BeerRepository;
+import com.haufe.test.repository.specification.BeerSearchSpecification;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -66,6 +72,23 @@ public class BeerService {
     private Beer findBeerById(Integer id) throws NotFoundException {
         return beerRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException(String.format("Beer with id %s not found", id)));
+    }
+
+    public Page<BeerDto> searchBeers(BeerSearchRequest request) {
+        BeerSortField sortField = BeerSortField.from(request.getSortBy())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid sort field: " + request.getSortBy()));
+        Sort.Direction sortDirection = Sort.Direction.fromOptionalString(request.getDirection().toUpperCase()).orElse(Sort.Direction.ASC);
+
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), Sort.by(sortDirection, sortField.getField()));
+
+        Specification<Beer> spec = Specification.allOf(
+                BeerSearchSpecification.nameContains(request.getName()),
+                BeerSearchSpecification.hasType(request.getBeerType()),
+                BeerSearchSpecification.abvGreaterThanOrEqual(request.getMinAbv()),
+                BeerSearchSpecification.abvLessThanOrEqual(request.getMaxAbv()),
+                BeerSearchSpecification.manufacturerNameContains(request.getManufacturerName()));
+
+        return beerRepository.findAll(spec, pageable).map(beerMapper::toDto);
     }
 
     private void setManufacturer(BeerDto beerDto, Beer existingBeer) throws ServerException {

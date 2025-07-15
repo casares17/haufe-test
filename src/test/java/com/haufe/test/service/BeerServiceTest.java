@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -69,12 +70,12 @@ class BeerServiceTest {
     void testGetAllBeers() {
         List<Beer> beers = List.of(beer1, beer2);
 
-        when(beerRepository.findAll()).thenReturn(beers);
+        when(beerRepository.findAll(any(Sort.class))).thenReturn(beers);
 
         List<BeerDto> result = beerService.getAllBeers("name", "asc");
 
         assertEquals(2, result.size());
-        verify(beerRepository).findAll();
+        verify(beerRepository).findAll(Sort.by(Sort.Direction.ASC, "name"));
     }
 
 
@@ -107,7 +108,7 @@ class BeerServiceTest {
                 .build();
 
         when(manufacturerService.findManufacturerById(1)).thenReturn(manufacturer);
-        when(beerRepository.save(any())).thenReturn(beerMapper.toEntity(beerDto));
+        when(beerRepository.save(any())).thenReturn(beer1);
 
 
         BeerDto result = beerService.createBeer(beerDto);
