@@ -24,6 +24,9 @@ This project is a Java application built with Spring Boot, developing a catalogu
 - The `BeerController` allows creating, updating, deleting and retrieving/searching beers.
 - The `ManufacturerController` allows creating, updating, deleting and retrieving manufacturers.
 
+## Swagger
+- The API is documented using Swagger. The Swagger UI can be accessed at `/swagger-ui/index.html`.
+
 ## Persistence
 
 - The application uses an in-memory H2 database to store data. The database schema is created automatically based on the
@@ -49,8 +52,6 @@ This project is a Java application built with Spring Boot, developing a catalogu
   and manufacturers.
 - Two users are created for testing purposes. The `manufacturer` user has the `MANUFACTURER` role and the `admin` user
   has the `ADMIN` role.
-- Further iteration could include JWT token for a more robust security implementation. That could allow an extra
-  functionality where manufacturers could edit beers data that they own, but not the ones from other manufacturers.
 
 ## Deployment in Kubernetes
 
@@ -90,7 +91,25 @@ the `devops/` directory. The following steps are required:
    `http://<minikube-ip>:<port>`. You can check that the application is running by accessing the `/actuator/health`
    endpoint.
 
+    Sometimes, when first starting the service, the url is not available. In that case, the service can be stopped and started again (step 5)
+
 ## Testing with Postman
 
 A sample Postman collection is provided in the project. It contains some requests to test the API endpoints. It could be
 extended and improved with more tests and scenarios.
+
+
+## Possible Improvements
+
+### Security
+
+- Implement JWT authentication for a more robust security implementation. The JWT token could allow an extra
+  functionality where manufacturers could edit beer data that they own, but not the ones from other manufacturers.
+- Store credentials in a secure way, such as using environment variables or a secret management tool.
+
+### Performance
+- Implement a caching mechanism on certain endpoints to improve performance.
+- Use a more robust database solution, such as PostgreSQL.
+
+### Frontend
+- Add a frontend application to consume the API and display the data in a user-friendly way.
