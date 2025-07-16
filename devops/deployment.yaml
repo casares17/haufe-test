@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: haufe-app
+  labels:
+    app: haufe-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: haufe-app
+  template:
+    metadata:
+      labels:
+        app: haufe-app
+    spec:
+      containers:
+        - name: haufe-container
+          image: haufe-test:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080

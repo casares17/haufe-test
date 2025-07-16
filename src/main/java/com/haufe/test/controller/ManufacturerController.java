@@ -8,6 +8,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,30 +27,36 @@ public class ManufacturerController {
 
     @Operation(summary = "Get all manufacturers")
     @GetMapping("")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<ManufacturerDto>> getAllManufacturers() {
         return ResponseEntity.status(HttpStatus.OK).body(manufacturerService.getAllManufacturers());
     }
 
     @Operation(summary = "Get manufacturer by ID")
     @GetMapping("/{id}")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<ManufacturerDto> getManufacturerById(@PathVariable Integer id) throws NotFoundException {
         return ResponseEntity.status(HttpStatus.OK).body(manufacturerService.getManufacturerById(id));
     }
 
     @Operation(summary = "Create a new manufacturer")
     @PostMapping("")
+    @PreAuthorize("hasRole('MANUFACTURER')")
     public ResponseEntity<ManufacturerDto> createManufacturer(@RequestBody ManufacturerDto manufacturerDto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(manufacturerService.createManufacturer(manufacturerDto));
     }
 
     @Operation(summary = "Update an existing manufacturer")
     @PutMapping("/{id}")
-    public ResponseEntity<ManufacturerDto> updateManufacturer(@PathVariable Integer id, @RequestBody ManufacturerDto manufacturerDto) throws NotFoundException {
+    @PreAuthorize("hasRole('MANUFACTURER')")
+    public ResponseEntity<ManufacturerDto> updateManufacturer(@PathVariable Integer id,
+                                                              @RequestBody ManufacturerDto manufacturerDto) throws NotFoundException {
         return ResponseEntity.status(HttpStatus.OK).body(manufacturerService.updateManufacturer(id, manufacturerDto));
     }
 
     @Operation(summary = "Delete a manufacturer by ID")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('MANUFACTURER')")
     public ResponseEntity<Void> deleteManufacturer(@PathVariable Integer id) throws NotFoundException {
         manufacturerService.deleteManufacturer(id);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();

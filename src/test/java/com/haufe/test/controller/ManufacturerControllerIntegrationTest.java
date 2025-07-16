@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -45,7 +46,7 @@ class ManufacturerControllerIntegrationTest {
     }
 
     @Test
-    void shouldGetAllManufacturers() throws Exception {
+    void testGetAllManufacturers() throws Exception {
 
         mockMvc.perform(get("/manufacturers"))
                 .andExpect(status().isOk())
@@ -54,7 +55,7 @@ class ManufacturerControllerIntegrationTest {
     }
 
     @Test
-    void shouldGetManufacturerById() throws Exception {
+    void testGetManufacturerById() throws Exception {
 
         Integer savedId = manufacturerRepository.findAll().get(0).getId();
 
@@ -72,6 +73,7 @@ class ManufacturerControllerIntegrationTest {
                 .build();
 
         mockMvc.perform(post("/manufacturers")
+                        .with(httpBasic("manufacturer", "password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(OBJECT_MAPPER.writeValueAsString(newManufacturer)))
                 .andExpect(status().isCreated())
@@ -82,7 +84,38 @@ class ManufacturerControllerIntegrationTest {
     }
 
     @Test
-    void shouldUpdateManufacturer() throws Exception {
+    void testCreateManufacturer_Admin() throws Exception {
+        ManufacturerDto newManufacturer = ManufacturerDto.builder()
+                .name("New Manufacturer")
+                .country("Portugal")
+                .build();
+
+        mockMvc.perform(post("/manufacturers")
+                        .with(httpBasic("admin", "adminPass"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(OBJECT_MAPPER.writeValueAsString(newManufacturer)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("New Manufacturer"))
+                .andExpect(jsonPath("$.country").value("Portugal"));
+
+        assertThat(manufacturerRepository.count()).isEqualTo(2);
+    }
+
+    @Test
+    void testCreateManufacturer_Unauthorized() throws Exception {
+        ManufacturerDto newManufacturer = ManufacturerDto.builder()
+                .name("New Manufacturer")
+                .country("Portugal")
+                .build();
+
+        mockMvc.perform(post("/manufacturers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(OBJECT_MAPPER.writeValueAsString(newManufacturer)))
+                .andExpect(status().is(401));
+    }
+
+    @Test
+    void testUpdateManufacturer() throws Exception {
         ManufacturerDto updatedManufacturer = ManufacturerDto.builder()
                 .name("Updated Manufacturer")
                 .country("Spain")
@@ -91,6 +124,7 @@ class ManufacturerControllerIntegrationTest {
         Integer savedId = manufacturerRepository.findAll().get(0).getId();
 
         mockMvc.perform(put("/manufacturers/{id}", savedId)
+                        .with(httpBasic("manufacturer", "password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(OBJECT_MAPPER.writeValueAsString(updatedManufacturer)))
                 .andExpect(status().isOk())
@@ -101,11 +135,12 @@ class ManufacturerControllerIntegrationTest {
     }
 
     @Test
-    void shouldDeleteManufacturer() throws Exception {
+    void testDeleteManufacturer() throws Exception {
 
         Integer savedId = manufacturerRepository.findAll().get(0).getId();
 
-        mockMvc.perform(delete("/manufacturers/{id}", savedId))
+        mockMvc.perform(delete("/manufacturers/{id}", savedId)
+                        .with(httpBasic("manufacturer", "password")))
                 .andExpect(status().isNoContent());
 
         assertThat(manufacturerRepository.findById(savedId)).isEmpty();

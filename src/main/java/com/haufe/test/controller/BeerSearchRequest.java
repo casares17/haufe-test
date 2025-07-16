@@ -19,8 +19,12 @@ public class BeerSearchRequest {
     private Double maxAbv;
     private String manufacturerName;
 
+    @Builder.Default
     private Integer page = 0;
+    @Builder.Default
     private Integer size = 10;
+    @Builder.Default
     private String sortBy = "name";
+    @Builder.Default
     private String direction = "asc";
 }

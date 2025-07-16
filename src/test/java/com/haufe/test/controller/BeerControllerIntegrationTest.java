@@ -29,6 +29,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
+
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -36,6 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class BeerControllerIntegrationTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    public static final String ADMIN_USERNAME = "admin";
+    public static final String ADMIN_PASSWORD = "adminPass";
 
     @Autowired
     private MockMvc mockMvc;
@@ -97,6 +101,7 @@ class BeerControllerIntegrationTest {
                 .build();
 
         mockMvc.perform(post("/beers")
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(OBJECT_MAPPER.writeValueAsString(newBeerDto)))
                 .andExpect(status().isCreated())
@@ -106,7 +111,7 @@ class BeerControllerIntegrationTest {
                 .andExpect(jsonPath("$.manufacturerDetails.name").value("Test Manufacturer"));
 
         // Verify repository size increased
-        assertThat(beerRepository.count()).isEqualTo(2);
+        assertThat(beerRepository.count()).isEqualTo(3);
     }
 
     @Test
@@ -120,9 +125,43 @@ class BeerControllerIntegrationTest {
                 .build();
 
         mockMvc.perform(post("/beers")
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(OBJECT_MAPPER.writeValueAsString(newBeerDto)))
                 .andExpect(status().is5xxServerError());
+    }
+
+    @Test
+    void testCreateBeer_Unauthorized() throws Exception {
+        BeerDto newBeerDto = BeerDto.builder()
+                .name("New Beer")
+                .alcoholByVolume(4.2)
+                .beerType(BeerType.LAGGER)
+                .description("A refreshing lager")
+                .manufacturerDetails(BeerDto.ManufacturerDetails.builder().id(99).build())
+                .build();
+
+        mockMvc.perform(post("/beers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(OBJECT_MAPPER.writeValueAsString(newBeerDto)))
+                .andExpect(status().is(401));
+    }
+
+    @Test
+    void testCreateBeer_Forbidden() throws Exception {
+        BeerDto newBeerDto = BeerDto.builder()
+                .name("New Beer")
+                .alcoholByVolume(4.2)
+                .beerType(BeerType.LAGGER)
+                .description("A refreshing lager")
+                .manufacturerDetails(BeerDto.ManufacturerDetails.builder().id(99).build())
+                .build();
+
+        mockMvc.perform(post("/beers")
+                        .with(httpBasic("manufacturer", "password"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(OBJECT_MAPPER.writeValueAsString(newBeerDto)))
+                .andExpect(status().is(403));
     }
 
     @Test
@@ -140,6 +179,7 @@ class BeerControllerIntegrationTest {
                 .build();
 
         mockMvc.perform(put("/beers/{id}", beerId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(OBJECT_MAPPER.writeValueAsString(updateDto)))
                 .andExpect(status().isOk())
@@ -152,6 +192,7 @@ class BeerControllerIntegrationTest {
     void testUpdateBeer_NotFound() throws Exception {
 
         mockMvc.perform(put("/beers/9999")
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(OBJECT_MAPPER.writeValueAsString(new BeerDto())))
                 .andExpect(status().isNotFound());
@@ -161,7 +202,8 @@ class BeerControllerIntegrationTest {
     void testDeleteBeer() throws Exception {
         Integer beerId = beerRepository.findAll().get(0).getId();
 
-        mockMvc.perform(delete("/beers/{id}", beerId))
+        mockMvc.perform(delete("/beers/{id}", beerId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD)))
                 .andExpect(status().isNoContent());
 
         assertThat(beerRepository.findById(beerId)).isEmpty();
@@ -169,7 +211,8 @@ class BeerControllerIntegrationTest {
 
     @Test
     void testDeleteBeer_NotFound() throws Exception {
-        mockMvc.perform(delete("/beers/9999"))
+        mockMvc.perform(delete("/beers/9999")
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD)))
                 .andExpect(status().isNotFound());
     }
 
@@ -178,6 +221,7 @@ class BeerControllerIntegrationTest {
     void testSearchBeers(BeerSearchRequest searchRequest, List<BeerDto> results) throws Exception {
 
         ResultActions resultActions = mockMvc.perform(post("/beers/search")
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(OBJECT_MAPPER.writeValueAsString(searchRequest))
                         .accept(MediaType.APPLICATION_JSON))
@@ -205,6 +249,7 @@ class BeerControllerIntegrationTest {
         searchRequest.setSortBy("invalidField");
 
         mockMvc.perform(post("/beers/search")
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(OBJECT_MAPPER.writeValueAsString(searchRequest))
                         .accept(MediaType.APPLICATION_JSON))
@@ -238,61 +283,45 @@ class BeerControllerIntegrationTest {
 
         return Stream.of(
                 Arguments.arguments(
-                        BeerSearchRequest.builder().name("Beer 1").page(0).size(10).sortBy("name").direction("asc")
-                                .build(),
+                        BeerSearchRequest.builder().name("Beer 1").build(),
                         List.of(beerDto1))
                 ,
                 Arguments.arguments(
-                        BeerSearchRequest.builder().name("Beer 2").page(0).size(10).sortBy("name").direction("asc")
-                                .build(),
+                        BeerSearchRequest.builder().name("Beer 2").build(),
                         List.of(beerDto2)),
                 Arguments.arguments(
-                        BeerSearchRequest.builder().name("Beer").page(0).size(10).sortBy("name").direction("asc")
-                                .build(),
+                        BeerSearchRequest.builder().name("Beer").build(),
                         List.of(beerDto1, beerDto2)),
                 Arguments.arguments(
-                        BeerSearchRequest.builder().name("Beer").page(0).size(10).sortBy("name").direction("desc")
-                                .build(),
+                        BeerSearchRequest.builder().name("Beer").sortBy("name").direction("desc").build(),
                         List.of(beerDto2, beerDto1)),
                 Arguments.arguments(
-                        BeerSearchRequest.builder().name("Water").page(0).size(10).sortBy("name").direction("asc")
-                                .build(),
+                        BeerSearchRequest.builder().name("Water").build(),
                         List.of()),
                 Arguments.arguments(
-                        BeerSearchRequest.builder().manufacturerName("Test Manufacturer").page(0).size(10)
-                                .sortBy("name").direction("asc")
-                                .build(),
+                        BeerSearchRequest.builder().manufacturerName("Test Manufacturer").build(),
                         List.of(beerDto1, beerDto2)),
                 Arguments.arguments(
-                        BeerSearchRequest.builder().minAbv(0.5).page(0).size(10).sortBy("name").direction("asc")
-                                .build(),
+                        BeerSearchRequest.builder().minAbv(0.5).build(),
                         List.of(beerDto1, beerDto2)),
                 Arguments.arguments(
-                        BeerSearchRequest.builder().minAbv(4.5).page(0).size(10).sortBy("name").direction("asc")
-                                .build(),
+                        BeerSearchRequest.builder().minAbv(4.5).build(),
                         List.of(beerDto1)),
                 Arguments.arguments(
-                        BeerSearchRequest.builder().maxAbv(4.5).page(0).size(10).sortBy("name").direction("asc")
-                                .build(),
+                        BeerSearchRequest.builder().maxAbv(4.5).build(),
                         List.of(beerDto2)),
                 Arguments.arguments(
-                        BeerSearchRequest.builder().minAbv(6.5).maxAbv(9.0).page(0).size(10).sortBy("name")
-                                .direction("asc")
-                                .build(),
+                        BeerSearchRequest.builder().minAbv(6.5).maxAbv(9.0).build(),
                         List.of()),
                 Arguments.arguments(
-                        BeerSearchRequest.builder().beerType(BeerType.IPA).page(0).size(10).sortBy("name")
-                                .direction("asc")
+                        BeerSearchRequest.builder().beerType(BeerType.IPA).build(),
+                        List.of(beerDto1)),
+                Arguments.arguments(
+                        BeerSearchRequest.builder().name("Beer").page(0).size(1)
                                 .build(),
                         List.of(beerDto1)),
                 Arguments.arguments(
-                        BeerSearchRequest.builder().name("Beer").page(0).size(1).sortBy("name").direction("asc")
-                                .build(),
-                        List.of(beerDto1)),
-                Arguments.arguments(
-                        BeerSearchRequest.builder().name("Beer").page(0).size(10).sortBy("alcoholByVolume")
-                                .direction("asc")
-                                .build(),
+                        BeerSearchRequest.builder().sortBy("alcoholByVolume").direction("asc").build(),
                         List.of(beerDto2, beerDto1))
         );
     }
